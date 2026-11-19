@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `options` text DEFAULT '{}' NOT NULL;

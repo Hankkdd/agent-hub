@@ -1,0 +1,11 @@
+# Installed by hand with deploy/install.sh. Not enabled by the installer; see docs/runbook/deploy.md.
+[Unit]
+Description=Deploy Agent Hub when main passes CI and the Hub is idle
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

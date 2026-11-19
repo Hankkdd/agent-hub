@@ -1,0 +1,1 @@
+ALTER TABLE `hosts` ADD `shell` text DEFAULT 'posix' NOT NULL;

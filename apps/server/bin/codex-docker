@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Stands in for the `codex` binary: the Codex SDK spawns this (codexPathOverride), and it runs the
+# real CLI in a container. The container is the sandbox, so the --sandbox flag the SDK passes is
+# turned into mounts instead:
+#   read-only        -> the task's directory is mounted read-only (a reviewer cannot edit, at all)
+#   workspace-write  -> the task's directory is mounted read-write, nothing else of the host is
+# and Codex itself runs with danger-full-access inside, since its own bubblewrap sandbox needs user
+# namespaces it cannot have in a container (or on an AppArmor-restricted Ubuntu host).
+#
+# Required env (set by the server): AGENT_HUB_CODEX_IMAGE, AGENT_HUB_CODEX_HOME.
+# Optional env: AGENT_HUB_CODEX_CACHE, a host directory kept across turns for package downloads
+# (the pnpm store and Go module/build caches), so fresh worktrees reuse package downloads.
+# Optional env: AGENT_HUB_CODEX_REFERENCE_DIRS, colon-separated absolute reference directories.
+# Only planning turns set it; each directory is mounted read-only at the same path.
+set -euo pipefail
+: "${AGENT_HUB_CODEX_IMAGE:?not set}"
+: "${AGENT_HUB_CODEX_HOME:?not set}"
+
+args=("$@")
+cd_dir=""
+sandbox="workspace-write"
+images=()
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    --cd) cd_dir="${args[$((i + 1))]}" ;;
+    --image | --output-schema) images+=("${args[$((i + 1))]}") ;;
+    --sandbox)
+      sandbox="${args[$((i + 1))]}"
+      args[$((i + 1))]="danger-full-access"
+      ;;
+  esac
+done
+
+mounts=()
+if [[ -n "$cd_dir" ]]; then
+  mode=$([[ "$sandbox" == "read-only" ]] && echo ro || echo rw)
+  # Same path inside and out, so paths in the agent's output mean the same thing on the host.
+  mounts+=(-v "$cd_dir:$cd_dir:$mode" -w "$cd_dir")
+  # A worktree's .git points into the main repo's .git; mount that read-only so `git status` /
+  # `git diff` work while commits (the Hub's job) cannot happen from inside.
+  common=$(git -C "$cd_dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+  if [[ -n "$common" && "$common" != "$cd_dir"/* ]]; then
+    mounts+=(-v "$common:$common:ro")
+  fi
+fi
+
+# Images and SDK output schemas live outside the task directory; mount their folders read-only.
+declare -A seen_dirs=()
+for img in "${images[@]}"; do
+  d=$(dirname "$img")
+  if [[ -z "${seen_dirs[$d]:-}" && ( -z "$cd_dir" || "$d" != "$cd_dir"* ) ]]; then
+    seen_dirs[$d]=1
+    mounts+=(-v "$d:$d:ro")
+  fi
+done
+
+# Planning references use the same paths the agent is told about in its system prompt.
+IFS=: read -r -a reference_dirs <<< "${AGENT_HUB_CODEX_REFERENCE_DIRS:-}"
+for d in "${reference_dirs[@]}"; do
+  [[ -n "$d" ]] || continue
+  [[ "$sandbox" == "read-only" && "$d" == /* && -d "$d" ]] || exit 1
+  if [[ "$d" != "$cd_dir" && -z "${seen_dirs[$d]:-}" ]]; then
+    seen_dirs[$d]=1
+    mounts+=(-v "$d:$d:ro")
+  fi
+done
+
+if [[ -n "${AGENT_HUB_CODEX_CACHE:-}" ]]; then
+  mkdir -p "$AGENT_HUB_CODEX_CACHE/pnpm-store" "$AGENT_HUB_CODEX_CACHE/go-mod" "$AGENT_HUB_CODEX_CACHE/go-build"
+  mounts+=(-v "$AGENT_HUB_CODEX_CACHE:/cache" -e npm_config_store_dir=/cache/pnpm-store
+    -e GOMODCACHE=/cache/go-mod -e GOCACHE=/cache/go-build)
+fi
+
+# Pass through what the SDK sets for the CLI; never the host's CODEX_HOME.
+envs=()
+while IFS= read -r name; do
+  case "$name" in
+    CODEX_HOME) ;;
+    CODEX_* | OPENAI_* | RUST_LOG | AGENT_HUB_MCP_TOKEN) envs+=(-e "$name") ;;
+  esac
+done < <(compgen -e)
+
+# exec: the SDK's SIGTERM (a stop) reaches the docker client, which forwards it into the container.
+exec docker run --rm -i --init \
+  --label agent-hub=codex \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -e CODEX_HOME=/codex-home \
+  -v "$AGENT_HUB_CODEX_HOME:/codex-home" \
+  "${mounts[@]}" \
+  "${envs[@]}" \
+  "$AGENT_HUB_CODEX_IMAGE" codex "${args[@]}"

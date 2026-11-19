@@ -1,0 +1,24 @@
+# Agent Hub as a user service, so it runs without a terminal or an editor session holding it.
+# Installed by deploy/install.sh (copied to ~/.config/systemd/user); editing this file changes nothing
+# until the installer runs again. Host-specific settings (AGENT_HUB_HOST, ...) live in the env file,
+# outside the repo.
+[Unit]
+Description=Agent Hub
+After=network-online.target docker.service
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=%h/agent-hub
+EnvironmentFile=-%h/.config/agent-hub/env
+ExecStart=%h/.local/bin/mise exec -- pnpm dev
+Restart=on-failure
+RestartSec=5
+# Let the server stop running turns itself (they are marked interrupted, not lost).
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

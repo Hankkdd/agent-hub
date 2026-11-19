@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: node scripts/check-doc-navigation.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm --filter @agent-hub/web build
+      # A schema change without its generated migration would only fail at deploy time.
+      - name: Migrations match the schema
+        working-directory: apps/server
+        run: |
+          pnpm exec drizzle-kit generate
+          git status --porcelain -- drizzle
+          test -z "$(git status --porcelain -- drizzle)"
+
+  image-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      images: ${{ steps.filter.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: main
+          filters: |
+            images:
+              - 'apps/server/docker/**'
+              - 'apps/server/bin/codex-docker'
+              - 'apps/server/src/agents/codex-docker.ts'
+              - 'apps/server/src/docker/**'
+              - 'apps/server/src/media/**'
+
+  images:
+    needs: image-changes
+    if: needs.image-changes.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify:images

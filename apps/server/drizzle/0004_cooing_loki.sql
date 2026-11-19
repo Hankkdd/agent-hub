@@ -1,0 +1,1 @@
+ALTER TABLE `queued_messages` ADD `images` text DEFAULT '[]' NOT NULL;

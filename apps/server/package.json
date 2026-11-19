@@ -1,0 +1,32 @@
+{
+  "name": "@agent-hub/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p .",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@agent-hub/shared": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.296",
+    "@hono/node-server": "^1.19.17",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@openai/codex-sdk": "^0.162.1",
+    "@xterm/headless": "6.0.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.20.5",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}

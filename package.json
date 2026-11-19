@@ -1,0 +1,25 @@
+{
+  "name": "agent-hub",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @agent-hub/server --filter @agent-hub/web dev",
+    "start": "pnpm --filter @agent-hub/web build && AGENT_HUB_SERVE_WEB=1 pnpm --filter @agent-hub/server start",
+    "test": "pnpm --filter @agent-hub/server --filter @agent-hub/web test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "codex:image": "pnpm --filter @agent-hub/server exec tsx scripts/codex.ts",
+    "codex:login": "pnpm --filter @agent-hub/server exec tsx scripts/codex.ts login",
+    "claude:login": "pnpm --filter @agent-hub/server exec tsx scripts/claude.ts",
+    "images": "pnpm --filter @agent-hub/server exec tsx scripts/images.ts",
+    "verify:images": "pnpm --filter @agent-hub/server exec tsx scripts/verify-images.ts",
+    "antigravity:prototype": "pnpm --filter @agent-hub/server exec tsx scripts/antigravity-prototype.ts"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2"
+  }
+}

@@ -1,0 +1,40 @@
+import { expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { Task, TaskEvent } from "@agent-hub/shared";
+import { activeMainSession } from "@agent-hub/shared";
+import { SwitchAgentDialog, handoffControlState } from "./switch-agent-dialog";
+import { HandoffCard } from "./handoff-card";
+import { ChatTab } from "./chat-tab";
+import { t } from "@/i18n";
+vi.mock("@/lib/client", () => ({ client: {}, label: (s: string) => s === "codex" ? "Codex" : "Claude" }));
+const session = { id: "old", taskId: "task", agent: "codex" as const, role: "main" as const, model: null, effort: "low" as const, sdkThreadId: "old-thread", status: "idle" as const };
+const next = { ...session, id: "new", agent: "claude" as const, sdkThreadId: null };
+const task: Task = { id: "task", title: "Same task", workflow: "chat", status: "idle", activity: null, cwd: null, workspace: null, options: { activeMainSessionId: "new", mainHandoffId: "note", pinnedAt: "2026-01-01" }, sessions: [session, next], createdAt: "", updatedAt: "" };
+const envelope = { id: "note", taskId: task.id, sessionId: next.id, seq: 4, createdAt: "2026-01-01" };
+const operation = { operationId: "op", sourceSessionId: session.id, sourceBackend: session.agent, target: next.agent, sourceFrom: 1, sourceTo: 3, sourceIdentity: "identity" };
+const started: TaskEvent = { ...envelope, id: "started", seq: 3, type: "handoff_started", ...operation };
+const failed: TaskEvent = { ...envelope, type: "handoff_failed", ...operation, error: "Retry fixture", interrupted: true };
+const note: TaskEvent = { ...envelope, type: "handoff_completed", ...operation, targetSessionId: next.id, material: { ...operation, summary: { goals: "Goal", decisions: "Decision", constraints: "Scope", completed: "Evidence", pending: "Pending", uncertainty: "Unknown", references: [1] }, recent: [], recentOmissions: [{ seq: 1, reason: "older" }], images: [{ eventId: "image", seq: 1, attachment: { file: "missing.png", mime: "image/png", size: 10 }, reason: "unavailable" }] } };
+it("projects active vs historical metadata and disables permission/busy/invalid and unsupported controls", () => {
+  expect(activeMainSession(task)).toEqual(next);
+  expect(handoffControlState(task, []).eligible).toBe(true);
+  for (const status of ["running", "waiting_user"] as const) expect(handoffControlState({ ...task, status }, []).incompatible).toBe(true);
+  expect(handoffControlState(task, [started]).preparing).toBe(true);
+  expect(handoffControlState(task, [started, failed]).preparing).toBe(false);
+  expect(handoffControlState(task, [started, note]).preparing).toBe(false);
+  for (const workflow of ["review", "implement", "video", "custom"] as const) expect(renderToStaticMarkup(<SwitchAgentDialog task={{ ...task, workflow }} events={[]} />)).toBe("");
+  expect(renderToStaticMarkup(<SwitchAgentDialog task={{ ...task, options: { activeMainSessionId: "invalid" } }} events={[]} />)).toBe("");
+  expect(renderToStaticMarkup(<SwitchAgentDialog task={{ ...task, status: "running" }} events={[]} />)).toContain('disabled=""');
+  expect(renderToStaticMarkup(<SwitchAgentDialog task={task} events={[started]} />)).toContain(t("handoff.preparing"));
+});
+it("renders persistent summary, source range, explicit image limitations and actionable failed retry", () => {
+  const html = renderToStaticMarkup(<HandoffCard event={note} />);
+  for (const text of ["Codex", "Claude", "2026-01-01", "<details>", "missing.png", t("handoff.image.unavailable"), t("handoff.limitations"), t("handoff.range", { from: 1, to: 3 })]) expect(html).toContain(text);
+  expect(renderToStaticMarkup(<HandoffCard event={failed} />)).toContain(t("handoff.retry"));
+});
+it("transcript retains old author labels, marks retired sessions and removes obsolete preparation markers", () => {
+  const events: TaskEvent[] = [{ ...envelope, id: "old-message", seq: 1, sessionId: session.id, type: "agent_text", text: "Old reply" }, started, note, { ...envelope, id: "new-message", seq: 5, type: "agent_text", text: "New reply" }];
+  const html = renderToStaticMarkup(<ChatTab task={task} events={events} onSelectTask={() => {}} />);
+  expect(html).toContain("Old reply"); expect(html).toContain("New reply"); expect(html).toContain(t("handoff.retired"));
+  expect(html).not.toContain(t("handoff.preparing")); expect(html).toContain(t("handoff.completed"));
+});

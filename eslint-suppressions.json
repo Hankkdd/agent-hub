@@ -1,0 +1,68 @@
+{
+  "apps/web/src/components/antigravity-dialog.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "apps/web/src/components/change-briefing.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "apps/web/src/components/chat-tab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "apps/web/src/components/devices-view.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "apps/web/src/components/diff-tab.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "apps/web/src/components/document-suggestions.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "apps/web/src/components/document-workspace.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "apps/web/src/components/google-dialog.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "apps/web/src/components/new-task-dialog.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 5
+    }
+  },
+  "apps/web/src/components/quota-summary.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    }
+  },
+  "apps/web/src/components/task-usage.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "apps/web/src/lib/use-phone-navigation.ts": {
+    "react-hooks/refs": {
+      "count": 1
+    }
+  }
+}

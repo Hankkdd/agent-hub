@@ -1,0 +1,14 @@
+# Installed by hand with deploy/install.sh; deploys never replace the installed unit.
+# One pass of continuous deployment; started by agent-hub-auto-deploy.timer.
+[Unit]
+Description=Agent Hub auto-deploy check
+After=network-online.target agent-hub-prod.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/agent-hub-prod
+EnvironmentFile=%h/.config/agent-hub/env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/mise exec -- pnpm --silent --filter @agent-hub/server exec tsx scripts/auto-deploy.ts
+TimeoutStartSec=5min
