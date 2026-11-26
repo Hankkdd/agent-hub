@@ -230,3 +230,20 @@ Run `mise exec -- node scripts/check-doc-navigation.mjs` from the repository roo
 bounded check of local inline Markdown links/headings in AGENTS, README and this map, their map entries,
 and the CLAUDE import. It checks target existence, not semantic freshness; review changed domain entries
 against the source code. It does not crawl external documents, invoke a model or rewrite files.
+
+## Terminal login panels
+
+- **Read when:** changing Claude or Antigravity web login, CLI status, logout or terminal rendering.
+- **Documents:** [Claude login](runbook/claude-login.md), [Antigravity login](runbook/antigravity-login.md),
+  [runtime decisions](design.md#72-claude--codex-合作需求-3review-workflow).
+- **Code:** [shared lifecycle](../apps/server/src/terminal-login/login.ts),
+  [Docker attach](../apps/server/src/terminal-login/docker.ts),
+  [screen](../apps/server/src/terminal-login/screen.ts),
+  [Claude provider](../apps/server/src/claude-login/login.ts),
+  [Antigravity provider](../apps/server/src/antigravity/login.ts),
+  [shared dialog](../apps/web/src/components/antigravity-dialog.tsx).
+- **Tests:** [Claude fake containers](../apps/server/test/claude-login.test.ts),
+  [Antigravity compatibility](../apps/server/test/antigravity.test.ts),
+  [dialog](../apps/web/src/components/antigravity-dialog.test.tsx).
+- **Boundary:** transient login sessions, no task events, model calls or credential inspection.
+  Claude Docker login is separate from the host runtime login; no runtime selection changes.

@@ -1,3 +1,4 @@
+import { ClaudeLogin } from "./claude-login/login";
 import { AntigravityLogin } from "./antigravity/login";
 import { GoogleAccount } from "./google/auth";
 import { HostStatus } from "./deploy/host-status";
@@ -117,7 +118,9 @@ setInterval(() => void hub.pollPullRequests().catch((err) => console.warn("PR po
 const token = loadToken(config.dataDir);
 const remoteToken = loadRemoteToken(config.dataDir, env("AGENT_HUB_REMOTE_API", "") === "1");
 if (remoteToken) console.log(`remote API token enabled; it is in ${remoteTokenFile(config.dataDir)}`);
-const app = createApp(hub, token, hosts, agentKey, deployer, { google, antigravity, documents: new Documents(db), remoteToken });
+const claudeLogin = new ClaudeLogin({ dataDir: config.dataDir, claudeRuntime: config.claudeRuntime, onSuccess: async () => { await hub.refreshClaudeQuota(); } });
+await claudeLogin.cleanup();
+const app = createApp(hub, token, hosts, agentKey, deployer, { google, antigravity, claudeLogin, documents: new Documents(db), remoteToken });
 if (config.serveWeb) {
   const dist = path.relative(process.cwd(), path.join(ROOT, "apps/web/dist"));
   app.use("/*", serveStatic({ root: dist }));
@@ -138,7 +141,7 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
     if (stopping) process.exit(1); // second signal: give up waiting
     stopping = true;
     console.log(`${sig}: stopping running turns…`);
-    void Promise.allSettled([hub.shutdown(), antigravity.shutdown()]).finally(() => {
+    void Promise.allSettled([hub.shutdown(), antigravity.shutdown(), claudeLogin.shutdown()]).finally(() => {
       stopDiscord?.();
       tools.close();
       process.exit(0);

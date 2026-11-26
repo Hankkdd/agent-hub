@@ -77,7 +77,9 @@ http://127.0.0.1:5173/?token=<token>
 Replace `<token>` with the file's contents. Hub exchanges it for an HttpOnly cookie
 and removes it from the address bar. Keep this token private.
 
-Before your first agent task, log in to Claude Code as the user running Hub, or run
+Before your first agent task, log in to Claude Code as the user running Hub. For the Claude
+Docker runtime, use [Claude login in the sidebar](docs/runbook/claude-login.md)
+(`mise exec -- pnpm claude:login` is the terminal fallback). For Codex, run
 `mise exec -- pnpm codex:login` for the separate Codex container login. Container
 images are built on first use; `mise exec -- pnpm images` builds them ahead of time.
 

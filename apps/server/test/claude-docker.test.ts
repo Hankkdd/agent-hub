@@ -99,7 +99,7 @@ describe("ClaudeAdapter runtime", () => {
   it("refuses with the login command before starting anything when the container is not logged in", async () => {
     const adapter = new ClaudeAdapter({ permissionMode: "auto", settingSources: [], runtime: "docker", claudeHome: home });
     const events = await drain(adapter.run(input()));
-    expect(events).toEqual([{ type: "done", ok: false, error: expect.stringContaining("pnpm claude:login") }]);
+    expect(events).toEqual([{ type: "done", ok: false, error: expect.stringContaining("Open Claude login in the sidebar") }]);
     expect(query).not.toHaveBeenCalled();
     expect(await adapter.queryQuota(new AbortController().signal)).toEqual({ status: "missing_login", windows: [] });
     expect(await adapter.listModels()).toEqual([]);

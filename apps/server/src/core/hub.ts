@@ -314,6 +314,7 @@ export class Hub {
     return this.getTask(taskId);
   }
 
+  refreshClaudeQuota() { return this.quotaService.refreshClaude(); }
   quota(force = false) { return this.quotaService.read(force); }
 
   // ---------- reads ----------

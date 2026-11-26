@@ -1,6 +1,15 @@
 import type { TranslationKey } from "./en";
 
 export const zhTW: Record<TranslationKey, string> = {
+  "claudeLogin.confirmLogout": "要登出 Hub 專用的 Claude 帳號嗎？",
+  "claudeLogin.hostRuntime": "此登入供 AGENT_HUB_CLAUDE_RUNTIME=docker 使用；host 模式使用主機的 ~/.claude（請在主機執行 `claude auth login`）。",
+  "claudeLogin.title": "Claude 登入",
+  "claudeLogin.warning": "在隔離容器中執行官方 Claude Code CLI。此 Hub 登入供 Claude Docker 執行環境使用；主機登入另外管理。",
+  "claudeLogin.refresh": "重新整理登入狀態",
+  "claudeLogin.status.logged-in": "已登入",
+  "claudeLogin.status.logged-out": "未登入",
+  "claudeLogin.status.unknown": "登入狀態不明",
+
   "workflow.room": "討論室",
   "room.discuss": "與 Claude + GPT 討論",
   "room.gpt": "GPT",

@@ -1,6 +1,6 @@
 import { DocumentWorkspace } from "@/components/document-workspace";
 import { DocumentWorkspaceModel } from "@/lib/document-workspace-model";
-import { AntigravityDialog } from "@/components/antigravity-dialog";
+import { AntigravityDialog, ClaudeLoginDialog } from "@/components/antigravity-dialog";
 import { GoogleDialog, GOOGLE_RESULTS, type GoogleResult } from "@/components/google-dialog";
 import { useQuota } from "@/components/quota-summary";
 import { t, useLanguage } from "@/i18n";
@@ -27,6 +27,7 @@ export function App() {
     const value = new URL(window.location.href).searchParams.get("google");
     return GOOGLE_RESULTS.find((result) => result === value);
   });
+  const [claudeLoginOpen, setClaudeLoginOpen] = useState(false);
   const [antigravityOpen, setAntigravityOpen] = useState(false);
   const [googleOpen, setGoogleOpen] = useState(() => new URL(window.location.href).searchParams.has("google"));
   useEffect(() => {
@@ -68,7 +69,9 @@ export function App() {
             documentsOpen={view === "documents"}
             documentsDirty={documents.protectedDraft() || documents.hasSuggestionMaterial() || documentState.createUnknown !== null}
             onGoogle={() => setGoogleOpen(true)}
+            onClaudeLogin={() => setClaudeLoginOpen(true)}
             onAntigravity={() => setAntigravityOpen(true)}
+            claudeRuntime={quota.claudeRuntime}
             quota={quota.state}
             refreshQuota={quota.refresh}
             tasks={tasks}
@@ -112,6 +115,7 @@ export function App() {
           )}
         </main>
       </div>
+      <ClaudeLoginDialog open={claudeLoginOpen} onOpenChange={setClaudeLoginOpen} onRecovered={quota.refresh} />
       <AntigravityDialog open={antigravityOpen} onOpenChange={setAntigravityOpen} />
       <GoogleDialog open={googleOpen} onOpenChange={setGoogleOpen} result={googleResult} />
       <NewTaskDialog

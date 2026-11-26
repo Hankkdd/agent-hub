@@ -89,7 +89,7 @@ export class ClaudeAdapter implements AgentAdapter {
     if (container) {
       // Fail with a sentence a human can act on, not a CLI error from inside a container.
       if (!isLoggedIn(container.claudeHome)) {
-        yield { type: "done", ok: false, error: `Claude runs in a container and is not logged in there yet. Run once on the server: ${loginCommand()}` };
+        yield { type: "done", ok: false, error: `Claude runs in a container and is not logged in there yet. Open Claude login in the sidebar. Terminal fallback on the server: ${loginCommand()}` };
         return;
       }
       const started = Date.now();

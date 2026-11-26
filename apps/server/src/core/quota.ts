@@ -40,6 +40,12 @@ export class QuotaService {
     const gemini = this.agents.gemini ? await this.provider("gemini", force) : undefined;
     return { claude, codex, ...(gemini ? { gemini } : {}) };
   }
+  async refreshClaude() {
+    const entry = this.entries.get("claude");
+    if (entry?.flight) await entry.flight;
+    if (entry) entry.attemptedAt = -Infinity;
+    return this.provider("claude", true);
+  }
   private snapshot(provider: AgentKind, entry: Entry): ProviderQuota {
     const now = this.now();
     const stale = entry.updatedAt !== null && (now >= entry.updatedAt + INTERVAL || ["error", "unavailable", "missing_login"].includes(entry.reading.status) ||
