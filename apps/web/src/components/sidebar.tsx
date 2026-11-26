@@ -25,6 +25,8 @@ const CONNECTION: Record<Connection, { text: TranslationKey; dot: string }> = {
 
 export function Sidebar(props: {
   onGoogle?: () => void;
+  claudeRuntime?: "host" | "docker" | null;
+  onClaudeLogin?: () => void;
   onAntigravity?: () => void;
   quota: QuotaState;
   refreshQuota: () => unknown;
@@ -99,7 +101,7 @@ export function Sidebar(props: {
           </div>
         </div>
         <Button variant={props.documentsOpen ? "secondary" : "ghost"} className="mx-2 mb-2 justify-start" onClick={props.onDocuments} aria-current={props.documentsOpen ? "page" : undefined}>{t("documents.title")}{props.documentsDirty ? " *" : ""}</Button>
-        <QuotaSummary state={props.quota} refresh={props.refreshQuota} />
+        <QuotaSummary claudeRuntime={props.claudeRuntime} state={props.quota} refresh={props.refreshQuota} onClaudeLogin={props.onClaudeLogin} />
         <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
           {shortcuts.length > 0 && <section className="px-2 pb-3" aria-label={t("sidebar.pinned")}>
             <div className="px-2 py-2 text-sm font-semibold">{t("sidebar.pinned")}</div>
@@ -115,6 +117,7 @@ export function Sidebar(props: {
         <div className="sidebar-footer grid grid-cols-5 gap-1 border-t p-1.5">
           <FooterButton icon={Server} label={t("footer.devices")} title={t("app.devices")} active={props.devicesOpen} onClick={props.onDevices} />
           <FooterButton icon={Cloud} label={t("footer.google")} title={t("google.title")} onClick={props.onGoogle} />
+          <FooterButton icon={Sparkles} label={t("claudeLogin.title")} title={t("claudeLogin.title")} onClick={props.onClaudeLogin} />
           <FooterButton icon={Sparkles} label={t("footer.antigravity")} title={t("antigravity.title")} onClick={props.onAntigravity} />
           <FooterButton icon={Rocket} label={t("footer.deploy")} title={t("deploy.title")} onClick={() => setDeployOpen(true)} />
           <FooterButton icon={Languages} label={t(language === "zh-TW" ? "footer.languageEn" : "footer.languageZh")} title={t("language.toggle")}

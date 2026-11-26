@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ProviderQuota, QuotaResponse, QuotaWindow } from "@agent-hub/shared";
+import type { ClaudeLoginStatus, ProviderQuota, QuotaResponse, QuotaWindow } from "@agent-hub/shared";
 import { t, useLanguage } from "@/i18n";
 import { client } from "@/lib/client";
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,16 @@ import { countdown, localTime, percentage, quotaStale, remainingShare, windowLab
 
 export function useQuota(authenticated: boolean) {
   const [state, setState] = useState<QuotaState>({ data: null, loading: false, error: false, now: Date.now() });
+  const [claudeRuntime, setClaudeRuntime] = useState<ClaudeLoginStatus["runtime"] | null>(null);
   const controller = useRef<ReturnType<typeof quotaScheduler> | null>(null);
   useEffect(() => {
     if (!authenticated) return;
+    let cancelled = false;
+    void client.claudeLoginStatus().then(status => { if (!cancelled) setClaudeRuntime(status.runtime); }, () => {});
     controller.current = quotaScheduler(document, force => client.quota(force), setState);
-    return () => { controller.current?.dispose(); controller.current = null; };
+    return () => { cancelled = true; controller.current?.dispose(); controller.current = null; };
   }, [authenticated]);
-  return { state, refresh: () => controller.current?.refresh(true) };
+  return { state, claudeRuntime, refresh: () => controller.current?.refresh(true) };
 }
 const LOW_PERCENT = 25;
 
@@ -32,7 +35,7 @@ function status(provider: ProviderQuota | undefined, state: QuotaState): string 
   if (!provider) return t(state.error ? "quota.error" : "quota.loading");
   return t(`quota.${provider.status}`);
 }
-export function QuotaSummary({ state, refresh }: { state: QuotaState; refresh: () => unknown }) {
+export function QuotaSummary({ state, refresh, onClaudeLogin, claudeRuntime }: { state: QuotaState; refresh: () => unknown; onClaudeLogin?: () => void; claudeRuntime?: ClaudeLoginStatus["runtime"] | null }) {
   const language = useLanguage();
   // Gemini is chat-only; only a connected adapter contributes a quota entry.
   const providers = ["claude", "codex", ...(state.data?.gemini ? ["gemini" as const] : [])] as const;
@@ -56,6 +59,7 @@ export function QuotaSummary({ state, refresh }: { state: QuotaState; refresh: (
           })}
         </button>
       </DialogTrigger>
+      {claudeRuntime === "docker" && state.data?.claude.status === "missing_login" && <Button className="mx-2 mb-2" variant="link" onClick={onClaudeLogin}>{t("claudeLogin.title")}</Button>}
       <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>{t("quota.title")}</DialogTitle><DialogDescription>{t("quota.description")}</DialogDescription></DialogHeader>
         <div aria-live="polite" className="space-y-4 text-sm">
@@ -65,6 +69,7 @@ export function QuotaSummary({ state, refresh }: { state: QuotaState; refresh: (
               <h3 className="font-semibold">{t(`agent.${kind}`)}</h3>
               {state.loading && <p>{t("quota.loading")}</p>}
               {(!provider || provider.status !== "ok") && <p>{status(provider, state)}</p>}
+              {claudeRuntime === "docker" && kind === "claude" && provider?.status === "missing_login" && <Button variant="link" onClick={onClaudeLogin}>{t("claudeLogin.title")}</Button>}
               {provider && (quotaStale(provider, state.now) || state.error) && <p className="text-amber-600 dark:text-amber-400">{t("quota.stale")}</p>}
               {provider?.windows.map(w => <div key={w.id} className="rounded-md border p-3">
                 <QuotaBar window={w} now={state.now} label={`${w.bucket} · ${windowLabel(w)}`} detail={percentage(w, state.now)} />

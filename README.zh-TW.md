@@ -70,7 +70,9 @@ http://127.0.0.1:5173/?token=<token>
 將 `<token>` 換成檔案內容。Hub 會將它交換為 HttpOnly cookie，並從網址列移除。
 請妥善保管這個權杖。
 
-第一次執行代理任務前，請以執行 Hub 的使用者登入 Claude Code，或執行
+第一次執行代理任務前，請以執行 Hub 的使用者登入 Claude Code。若使用 Claude Docker
+執行環境，請開啟[側欄的 Claude 登入面板](docs/runbook/claude-login.md)
+（終端機備用方式為 `mise exec -- pnpm claude:login`）。Codex 則執行
 `mise exec -- pnpm codex:login`，建立 Codex 容器專用的登入狀態。
 容器映像會在首次使用時建置；也可先執行 `mise exec -- pnpm images` 預先建置。
 

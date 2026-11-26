@@ -1,3 +1,4 @@
+import type { ClaudeLogin } from "./claude-login/login";
 import type { RoomCreateInput, RoomMessageInput } from "@agent-hub/shared";
 import { AntigravityLogin, AntigravityError } from "./antigravity/login";
 import { GoogleAccount, GoogleError } from "./google/auth";
@@ -50,7 +51,7 @@ async function documentBody(request: Request): Promise<unknown> {
 }
 
 /** The HTTP API (commands) + the SSE stream (changes). Static files are mounted by main.ts. */
-export function createApp(hub: Hub, token: string, hosts?: Hosts, agentKey?: { keyPath: string; publicKey: string }, deployer?: Deployer, options: { google?: GoogleAccount; antigravity?: AntigravityLogin; documents?: Documents; remoteToken?: string | null } = {}): Hono {
+export function createApp(hub: Hub, token: string, hosts?: Hosts, agentKey?: { keyPath: string; publicKey: string }, deployer?: Deployer, options: { google?: GoogleAccount; antigravity?: AntigravityLogin; claudeLogin?: ClaudeLogin; documents?: Documents; remoteToken?: string | null } = {}): Hono {
   const remoteToken = options.remoteToken ?? null;
   const app = new Hono();
 
@@ -72,6 +73,7 @@ export function createApp(hub: Hub, token: string, hosts?: Hosts, agentKey?: { k
     if (c.req.path === "/api/antigravity" || c.req.path.startsWith("/api/antigravity/")) {
       return c.json({ error: "antigravity-unavailable", code: "antigravity-unavailable" }, 503);
     }
+    if (c.req.path.startsWith("/api/terminal-login/claude")) return c.json({ error: "claude-login-unavailable", code: "claude-login-unavailable" }, 503);
     console.error(err);
     return c.json({ error: "internal error" }, 500);
   });
@@ -159,6 +161,25 @@ export function createApp(hub: Hub, token: string, hosts?: Hosts, agentKey?: { k
     let input: unknown;
     try { input = JSON.parse(raw); } catch { throw new AntigravityError("invalid-input", 400); }
     antigravity().input(input);
+    return c.json({ ok: true });
+  });
+  app.use("/api/terminal-login/claude/*", async (c, next) => { c.header("Cache-Control", "no-store"); await next(); });
+  app.use("/api/terminal-login/claude", async (c, next) => { c.header("Cache-Control", "no-store"); await next(); });
+  const claudeLogin = () => {
+    if (!options.claudeLogin) throw new AntigravityError("docker-unavailable", 503);
+    return options.claudeLogin;
+  };
+  app.get("/api/terminal-login/claude", async c => c.json(await claudeLogin().status(c.req.query("refresh") === "1")));
+  app.get("/api/terminal-login/claude/login", async c => c.json(await claudeLogin().session()));
+  app.post("/api/terminal-login/claude/login/start", async c => c.json(await claudeLogin().start()));
+  app.post("/api/terminal-login/claude/login/cancel", async c => c.json(await claudeLogin().cancel()));
+  app.post("/api/terminal-login/claude/logout", async c => c.json(await claudeLogin().logout()));
+  app.post("/api/terminal-login/claude/login/input", async c => {
+    const raw = await c.req.text();
+    if (Buffer.byteLength(raw) > 4096) throw new AntigravityError("invalid-input", 400);
+    let input: unknown;
+    try { input = JSON.parse(raw); } catch { throw new AntigravityError("invalid-input", 400); }
+    claudeLogin().input(input);
     return c.json({ ok: true });
   });
   const unavailableGoogle = { storageError: false, configured: false, mode: null, configError: "Create google/client.json to configure Google.", account: null };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AntigravityKey, AntigravityStatus } from "@agent-hub/shared";
+import type { AntigravityInput, AntigravityKey, AntigravityStatus, ClaudeLoginStatus } from "@agent-hub/shared";
 import { client } from "@/lib/client";
 import { t, useLanguage } from "@/i18n";
 import { Button } from "./ui/button";
@@ -7,24 +7,41 @@ import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 
 const keys: AntigravityKey[] = ["enter", "up", "down", "left", "right", "tab", "escape", "space", "backspace"];
-export function AntigravityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+const claudeApi = {
+  status: (refresh = false) => client.claudeLoginStatus(refresh), session: () => client.claudeLoginSession(),
+  start: () => client.claudeLoginStart(), cancel: () => client.claudeLoginCancel(),
+  logout: () => client.claudeLoginLogout(), input: (input: AntigravityInput) => client.claudeLoginInput(input),
+};
+const antigravityApi = {
+  status: () => client.antigravityStatus(), session: () => client.antigravitySession(),
+  start: () => client.antigravityStart(), cancel: () => client.antigravityCancel(),
+  logout: () => client.antigravityLogout(), input: (input: AntigravityInput) => client.antigravityInput(input),
+};
+
+type DialogProps = { open: boolean; onOpenChange: (open: boolean) => void };
+export function AntigravityDialog(props: DialogProps) { return TerminalLoginDialog(props); }
+export function ClaudeLoginDialog(props: DialogProps & { onRecovered?: () => void }) {
+  return TerminalLoginDialog({ ...props, provider: "claude" });
+}
+export function TerminalLoginDialog({ open, onOpenChange, provider = "antigravity", onRecovered }: DialogProps & { provider?: "antigravity" | "claude"; onRecovered?: () => void }) {
   useLanguage();
-  const [status, setStatus] = useState<AntigravityStatus | null>(null);
+  const [status, setStatus] = useState<AntigravityStatus | ClaudeLoginStatus | null>(null);
   const [code, setCode] = useState("");
   const [submit, setSubmit] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const api = provider === "claude" ? claudeApi : antigravityApi;
   const state = status?.session.state;
   const active = state === "preparing-image" || state === "running" || state === "stopping";
   useEffect(() => {
     if (!open) { setCode(""); setConfirm(false); return; }
     let cancelled = false;
     setError(false);
-    void client.antigravityStatus().then(value => { if (!cancelled) setStatus(value); }, () => { if (!cancelled) setError(true); });
+    void api.status().then(value => { if (!cancelled) setStatus(value); }, () => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, api]);
   useEffect(() => {
     if (!open || !active) return;
     let cancelled = false;
@@ -32,15 +49,15 @@ export function AntigravityDialog({ open, onOpenChange }: { open: boolean; onOpe
     let refreshPresence = true;
     const poll = async () => {
       try {
-        const session = await client.antigravitySession();
+        const session = await api.session();
         if (!cancelled) {
           setNow(Date.now());
           const ended = !["preparing-image", "running", "stopping"].includes(session.state);
           if (refreshPresence || ended) {
-            const status = await client.antigravityStatus();
+            const status = await api.status();
             if (!cancelled) setStatus(status);
             refreshPresence = false;
-            if (ended) return;
+            if (ended) { if (session.state === "exited" && session.exitCode === 0) onRecovered?.(); return; }
           } else setStatus(previous => previous ? { ...previous, session } : previous);
         }
       } catch { if (!cancelled) setError(true); }
@@ -48,7 +65,7 @@ export function AntigravityDialog({ open, onOpenChange }: { open: boolean; onOpe
     };
     timer = setTimeout(() => void poll(), 1000);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [open, active]);
+  }, [open, active, api, onRecovered]);
   const act = async (action: () => Promise<void>) => {
     if (busy) return;
     setBusy(true); setError(false);
@@ -57,34 +74,38 @@ export function AntigravityDialog({ open, onOpenChange }: { open: boolean; onOpe
   const send = () => act(async () => {
     const text = code;
     setCode("");
-    await client.antigravityInput({ text, submit });
+    await api.input({ text, submit });
   });
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
       <DialogHeader>
-        <DialogTitle>{t("antigravity.title")}</DialogTitle>
-        <DialogDescription>{t("antigravity.warning")}</DialogDescription>
+        <DialogTitle>{t(provider === "claude" ? "claudeLogin.title" : "antigravity.title")}</DialogTitle>
+        <DialogDescription>{t(provider === "claude" ? "claudeLogin.warning" : "antigravity.warning")}</DialogDescription>
       </DialogHeader>
       {!status ? <p>{t("antigravity.loading")}</p> : <div className="space-y-3 text-sm">
+        {"runtime" in status && status.runtime === "host" && <p>{t("claudeLogin.hostRuntime")}</p>}
         <p>{status.available ? t("antigravity.available") : t(`antigravity.${status.reason ?? "docker-unavailable"}`)}</p>
-        <p>{t(`antigravity.credentials.${status.credentials}`)}</p>
+        {"credentials" in status ? <p>{t(`antigravity.credentials.${status.credentials}`)}</p> : <p>
+          {t(`claudeLogin.status.${status.account.state}`)}{status.account.email && ` · ${status.account.email}`}{status.account.subscriptionType && ` · ${status.account.subscriptionType}`}
+        </p>}
         <p role="status">{t(`antigravity.state.${status.session.state}`)}</p>
         {state === "failed" && status.session.failedStage && <p role="alert">{t(`antigravity.failedStage.${status.session.failedStage}`)}</p>}
         {status.session.exitCode !== undefined && <p>{t("antigravity.exitCode", { code: status.session.exitCode })}</p>}
         <div className="flex flex-wrap gap-2">
+          {provider === "claude" && <Button disabled={active || busy} variant="outline" onClick={() => void act(async () => { setStatus(await api.status(true)); })}>{t("claudeLogin.refresh")}</Button>}
           <Button disabled={!status.available || active || busy} onClick={() => void act(async () => {
-            const session = await client.antigravityStart();
+            const session = await api.start();
             setNow(Date.now()); setStatus({ ...status, session });
           })}>{t("antigravity.start")}</Button>
           <Button disabled={!active || busy} onClick={() => void act(async () => {
-            const session = await client.antigravityCancel(); setStatus({ ...status, session }); setCode("");
+            const session = await api.cancel(); setStatus({ ...status, session }); setCode("");
           })}>{t("antigravity.cancel")}</Button>
           <Button disabled={active || busy} variant="outline" onClick={() => setConfirm(true)}>{t("antigravity.logout")}</Button>
         </div>
         {confirm && <div>
-          <p>{t("antigravity.confirmLogout")}</p>
+          <p>{t(provider === "claude" ? "claudeLogin.confirmLogout" : "antigravity.confirmLogout")}</p>
           <Button disabled={active || busy} variant="destructive" onClick={() => void act(async () => {
-            setStatus(await client.antigravityLogout()); setConfirm(false);
+            setStatus(await api.logout()); setConfirm(false);
           })}>{t("antigravity.logout")}</Button>
           <Button variant="ghost" onClick={() => setConfirm(false)}>{t("common.cancel")}</Button>
         </div>}
@@ -96,7 +117,7 @@ export function AntigravityDialog({ open, onOpenChange }: { open: boolean; onOpe
           </Button>)}</div>
         </>}
         {active && <>
-          <div className="flex flex-wrap gap-2">{keys.map(key => <Button key={key} variant="outline" disabled={busy || state !== "running"} onClick={() => void act(async () => { await client.antigravityInput({ key }); })}>{t(`antigravity.key.${key}`)}</Button>)}</div>
+          <div className="flex flex-wrap gap-2">{keys.map(key => <Button key={key} variant="outline" disabled={busy || state !== "running"} onClick={() => void act(async () => { await api.input({ key }); })}>{t(`antigravity.key.${key}`)}</Button>)}</div>
           <form className="space-y-2" onSubmit={event => { event.preventDefault(); if (code && state === "running") void send(); }}>
             <Input aria-label={t("antigravity.code")} type="password" value={code} maxLength={512} autoComplete="off" spellCheck={false} onChange={event => setCode(event.target.value)} />
             <label className="flex gap-2 items-center"><input type="checkbox" checked={submit} onChange={event => setSubmit(event.target.checked)} />{t("antigravity.submit")}</label>

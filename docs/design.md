@@ -258,6 +258,17 @@ For team repositories, PR publishing follows draft → optional edit → confirm
   容器有自己的 Codex 登入（`data/codex-home`），不共用主機的 `~/.codex`，避免 agent 改到主機 Codex 會讀的設定。
   實測：審查者寫檔得到 `Read-only file system`；作者寫的檔案在主機上屬於我；兩者都看不到主機的家目錄、都無法 commit；
   按停止 2 秒內容器消失。Claude 目前仍在主機上跑（auto 權限），之後可以沿用同一套容器做法。
+- **Decision (2026-11-26): Claude Docker login is maintained in the web UI.** One Hub-owned
+  login lives in `claude-home` and is used by the Docker runtime. The Hub never reads, copies or
+  parses the credentials: it only runs the official SDK-supplied Claude Code binary, mounted
+  read-only, using `auth login --claudeai`, `auth status --json` and `auth logout`. Status probes
+  project only public account metadata, cache for 60 seconds and support explicit refresh with a
+  ten-second cooldown. Successful login re-probes and forces a Claude-only quota refresh.
+  Antigravity and Claude share the provider-neutral terminal-login lifecycle, Docker attach,
+  redaction and screen renderer; provider-specific image, command, home, environment, status and
+  sign-out remain separate. Claude mounts only its validated private home and SDK binary in a
+  hardened container. The host runtime login and production runtime setting remain unchanged.
+  The [Claude login runbook](runbook/claude-login.md) describes operation and the CLI fallback.
 - **Decision (2026-11-15): Claude can run in the same container, opt-in with `AGENT_HUB_CLAUDE_RUNTIME=docker`.**
   On the host Claude has Bash and can read the whole home directory, including the Hub token in `data/`.
   The `auto` classifier was its only guard, which made it the weakest boundary in the Hub.
@@ -277,7 +288,7 @@ For team repositories, PR publishing follows draft → optional edit → confirm
     user-level settings, the same gap Codex has. Devices are reached through the Hub's `ssh_exec`, and
     pushes and PRs stay the Hub's job.
   - **Default stays `host`.** An automatic deploy must not leave Claude without a login. Flip it after
-    `pnpm claude:login`.
+    login through the sidebar panel (`pnpm claude:login` remains a terminal fallback).
 
 ### 7.3 SSH（需求 2）
 

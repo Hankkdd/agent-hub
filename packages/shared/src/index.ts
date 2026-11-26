@@ -792,7 +792,7 @@ export type GoogleErrorCode =
 
 export type AntigravityKey = "enter" | "up" | "down" | "left" | "right" | "tab" | "escape" | "space" | "backspace";
 export type AntigravityInput = { key: AntigravityKey } | { text: string; submit?: boolean };
-export interface AntigravitySession {
+export interface TerminalLoginSession {
   failedStage?: "availability" | "cleanup" | "prepare" | "create" | "attach" | "start" | "wait" | "remove";
   state: "idle" | "preparing-image" | "running" | "stopping" | "exited" | "cancelled" | "expired" | "failed";
   screen: string[];
@@ -801,9 +801,23 @@ export interface AntigravitySession {
   startedAt: number | null;
   expiresAt: number | null;
 }
+export type AntigravitySession = TerminalLoginSession;
 export interface AntigravityStatus {
   available: boolean;
   reason?: "docker-unavailable" | "unsupported-arch";
   session: AntigravitySession;
   credentials: "absent" | "present-unverified";
+}
+
+export interface ClaudeAccount {
+  state: "logged-in" | "logged-out" | "unknown";
+  email?: string;
+  subscriptionType?: string;
+}
+export interface ClaudeLoginStatus {
+  runtime: "host" | "docker";
+  available: boolean;
+  reason?: "docker-unavailable" | "unsupported-arch";
+  session: AntigravitySession;
+  account: ClaudeAccount;
 }

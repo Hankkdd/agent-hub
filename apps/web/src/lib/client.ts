@@ -3,7 +3,7 @@ import type { SuggestionApi } from "./document-suggestions";
 import type { ImportSuggestionInput, SuggestionImportResult, SuggestionList, SuggestionDetail, SuggestionAcceptResult, SuggestionRejectResult } from "@agent-hub/shared";
 import type { CreateDocumentInput, UpdateDocumentInput, RestoreDocumentInput, DocumentDetail, DocumentList, DocumentRevisionList, DocumentRevision, DocumentWriteResult, DocumentErrorCode } from "@agent-hub/shared";
 import type { TaskUsageSummary, TaskUsagePage } from "@agent-hub/shared";
-import type { AntigravityStatus, AntigravitySession, AntigravityInput } from "@agent-hub/shared";
+import type { ClaudeLoginStatus, AntigravityStatus, AntigravitySession, AntigravityInput } from "@agent-hub/shared";
 import type { GoogleStatus } from "@agent-hub/shared";
 import type { DeployStatus } from "@agent-hub/shared";
 import type { IssueCommentEdit, IssueCommentVersion } from "@agent-hub/shared";
@@ -56,6 +56,12 @@ export interface HubClient extends SuggestionApi {
   restoreDocumentRevision(id: string, revisionId: string, input: RestoreDocumentInput): Promise<DocumentWriteResult>;
 
   analyzeVideo(taskId: string, kind: import("@agent-hub/shared").VideoAnalysisKind): Promise<void>;
+  claudeLoginStatus(refresh?: boolean): Promise<ClaudeLoginStatus>;
+  claudeLoginSession(): Promise<AntigravitySession>;
+  claudeLoginStart(): Promise<AntigravitySession>;
+  claudeLoginCancel(): Promise<AntigravitySession>;
+  claudeLoginLogout(): Promise<ClaudeLoginStatus>;
+  claudeLoginInput(input: AntigravityInput): Promise<{ ok: boolean }>;
   antigravityStatus(): Promise<AntigravityStatus>;
   antigravitySession(): Promise<AntigravitySession>;
   antigravityStart(): Promise<AntigravitySession>;
@@ -181,6 +187,12 @@ class HttpClient implements HubClient {
   }
 
   async analyzeVideo(taskId: string, kind: import("@agent-hub/shared").VideoAnalysisKind): Promise<void> { await this.post(`/api/tasks/${taskId}/video-analysis`, { kind }); }
+  claudeLoginStatus(refresh = false): Promise<ClaudeLoginStatus> { return this.get(`/api/terminal-login/claude${refresh ? "?refresh=1" : ""}`); }
+  claudeLoginSession(): Promise<AntigravitySession> { return this.get("/api/terminal-login/claude/login"); }
+  claudeLoginStart(): Promise<AntigravitySession> { return this.post("/api/terminal-login/claude/login/start", {}); }
+  claudeLoginCancel(): Promise<AntigravitySession> { return this.post("/api/terminal-login/claude/login/cancel", {}); }
+  claudeLoginLogout(): Promise<ClaudeLoginStatus> { return this.post("/api/terminal-login/claude/logout", {}); }
+  claudeLoginInput(input: AntigravityInput): Promise<{ ok: boolean }> { return this.post("/api/terminal-login/claude/login/input", input); }
   antigravityStatus(): Promise<AntigravityStatus> { return this.get("/api/antigravity"); }
   antigravitySession(): Promise<AntigravitySession> { return this.get("/api/antigravity/login"); }
   antigravityStart(): Promise<AntigravitySession> { return this.post("/api/antigravity/login/start", {}); }

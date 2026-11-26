@@ -10,7 +10,7 @@ what launches them.
 | `docker` | Codex's container and the media container (yt-dlp, ffmpeg, Whisper) | the user running Agent Hub must be in the `docker` group. That group is root-equivalent, so give it only to that user |
 | `git` | worktrees for implement/review tasks | |
 | `ssh`, `scp`, `ssh-keygen` | `ssh_exec` and `copy_file` run on the host, so device keys never enter a container; Agent Hub makes its own key on first start | OpenSSH client |
-| Claude Code login | host runtime: Claude runs through the Claude Agent SDK, which uses the Claude Code CLI's login. Docker runtime: the container has its own login in `data/claude-home` | host: log in once with `claude` as the user running Agent Hub. Docker: `mise exec -- pnpm claude:login` |
+| Claude Code login | host runtime: Claude runs through the Claude Agent SDK, which uses the Claude Code CLI's login. Docker runtime: the container has its own login in `data/claude-home` | host: log in once with `claude` as the user running Agent Hub. Docker: [Claude login in the sidebar](claude-login.md) replaces the terminal step; `mise exec -- pnpm claude:login` remains a fallback |
 | Codex login | the Codex container has its own login in `data/codex-home` | `mise exec -- pnpm codex:login` (device code) |
 | tailscale (optional) | to reach the web UI from other devices without exposing it | bind with `AGENT_HUB_HOST=<tailscale IP>` |
 

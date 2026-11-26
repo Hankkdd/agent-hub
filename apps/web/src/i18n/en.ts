@@ -1,4 +1,13 @@
 export const en = {
+  "claudeLogin.confirmLogout": "Sign out of the Hub-owned Claude login?",
+  "claudeLogin.hostRuntime": "This login is used when AGENT_HUB_CLAUDE_RUNTIME=docker; host mode uses the host's ~/.claude (run `claude auth login` on the host).",
+  "claudeLogin.title": "Claude login",
+  "claudeLogin.warning": "Runs the official Claude Code CLI in an isolated container. This Hub login is used by the Claude Docker runtime; the host login is separate.",
+  "claudeLogin.refresh": "Refresh login status",
+  "claudeLogin.status.logged-in": "Logged in",
+  "claudeLogin.status.logged-out": "Logged out",
+  "claudeLogin.status.unknown": "Login status unknown",
+
   "workflow.room": "Room",
   "room.discuss": "Discuss with Claude + GPT",
   "room.gpt": "GPT",
